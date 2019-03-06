@@ -16,14 +16,14 @@ END Datapath;
 
 
 ARCHITECTURE RTL OF Datapath IS
-	Signal branchresult: std_logic_vector(7 downto 0);
-	Signal readdata1,readdata2, writedata,selectB, selectPC :std_logic_vector(7 DOWNTO 0);
-	Signal PCtemp, PC, newPC: std_logic_vector(7 DOWNTO 0);
+	Signal branchresult : std_logic_vector(7 downto 0);
+	Signal readdata1, readdata2, writedata, selectB, selectPC : std_logic_vector(7 DOWNTO 0);
+	Signal PCtemp, PC, newPC : std_logic_vector(7 DOWNTO 0);
 	Signal IR : std_logic_vector(31 DOWNTO 0);
 	Signal ZEROsignal: std_logic;
 	signal writeregout : std_logic_vector(4 downto 0);
-	Signal ALUOPERATION: std_logic_vector(2 DOWNTO 0);
-	signal MEMTOREGresult: std_logic_vector(7 DOWNTO 0);
+	Signal ALUOPERATION : std_logic_vector(2 DOWNTO 0);
+	signal MEMTOREGresult : std_logic_vector(7 DOWNTO 0);
 	signal DMEMresult: std_logic_vector(7 DOWNTO 0);
 	Signal ALUOp: std_logic_vector(1 DOWNTO 0);
 	Signal ALUresult: std_logic_vector(7 DOWNTO 0);
@@ -112,15 +112,14 @@ PORT (
 	Operation:OUT STD_LOGIC_VECTOR(2 DOWNTO 0));
 end component;
 
-component ALU8bit
-PORT (
+entity smallAlu is 
+port (
+		selec :in std_logic_vector(2 downto 0);
+		ValA, ValB: in std_logic_vector(7 downto 0);
+		ValO : out std_logic_vector(7 downto 0)
 
-	A, B:IN STD_LOGIC_VECTOR(7 downto 0);
-	ALUoperation:IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-	ALUout:OUT STD_LOGIC_VECTOR(7 downto 0);
-	Zero:OUT STD_LOGIC);
-	
-end component;
+	);
+end smallAlu;
 
 component shiftLeft8bit
 PORT ( 	
@@ -165,19 +164,25 @@ CONTROL: controlunit port map(IR(31 downto 26), RegDst, ALUSrc, MemtoReg, RegWri
 
 WRITEreg: mux21_5bit port map(IR(20 downto 16), IR(15 downto 11), RegDst, writeregout);
 
-REGISTERS: registerfile port map(gclock, greset, IR(25 downto 21),IR(20 downto 16), writeregout, writedata,'0',readdata1, readdata2);
+REGISTERS: registerfile port map(gclock, greset, IR(25 downto 21),IR(20 downto 16), writeregout, writedata, RegWrite, readdata1, readdata2);
 
 SELECTread2: mux21_8bit port map(readdata2, IR(7 downto 0),ALUSrc,selectB);
 
 ALUCON: ALUcontrol port map(IR(5 downto 0),ALUOp,ALUOPERATION);
 
-ALU: ALU8bit port map(readdata1,selectB,ALUOPERATION,ALUresult, ZEROsignal);
+ALU: RegWrite port map(readdata1, selectB, ALUOPERATION, ALUresult, ZEROsignal);
+
+
+selec :in std_logic_vector(2 downto 0);
+		ValA, ValB: in std_logic_vector(7 downto 0);
+		ValO : out std_logic_vector(7 downto 0)
+
 
 DATAMEM: ram port map(ALUresult, gclock, readdata2, MemWrite, DMEMresult); -- MemRead
 
 SelECTwrite: mux21_8bit port map (ALUresult, DMEMresult, MEMtoReg, writedata);
 
-REGISTERS2: registerfile port map(gclock,greset,IR(25 downto 21),IR(20 downto 16), writeregout,writedata,RegWrite,readdata1,readdata2);
+--REGISTERS2: registerfile port map(gclock,greset,IR(25 downto 21),IR(20 downto 16), writeregout, writedata, RegWrite, readdata1, readdata2);
 
 ADDNEXTPC: fullAdder8Bit port map(PCtemp, IR(7 downto 0), c, open, branchresult);
 
