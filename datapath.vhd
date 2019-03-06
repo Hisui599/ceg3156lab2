@@ -18,7 +18,7 @@ END Datapath;
 ARCHITECTURE RTL OF Datapath IS
 	Signal branchresult: std_logic_vector(7 downto 0);
 	Signal readdata1,readdata2, writedata,selectB, selectPC :std_logic_vector(7 DOWNTO 0);
-	Signal PCtemp, PC: std_logic_vector(7 DOWNTO 0);
+	Signal PCtemp, PC, newPC: std_logic_vector(7 DOWNTO 0);
 	Signal IR : std_logic_vector(31 DOWNTO 0);
 	Signal ZEROsignal: std_logic;
 	signal writeregout : std_logic_vector(4 downto 0);
@@ -137,10 +137,25 @@ component mux3x8
 		y : out std_logic_vector(7 downto 0));
 end component;
 
+component mux21_5bit
+PORT (A, B : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+		s : IN STD_LOGIC;
+		R : OUT STD_LOGIC_VECTOR(4 DOWNTO 0));
+end component;
+
+component eightbitregister
+	PORT(
+		i_resetBar, i_en	: IN	STD_LOGIC;
+		i_clock			: IN	STD_LOGIC;
+		i_Value			: IN	STD_LOGIC_VECTOR(7 downto 0);
+		o_Value			: OUT	STD_LOGIC_VECTOR(7 downto 0));
+END component;
 
 BEGIN
 
-PC <= "00000000";
+--PC <= "00000000";
+
+ProgramCounter: eightbitregister port map (greset, '1', gclock, newPC, PC);
 
 PCplus4: fullAdder8Bit port map(PC,"00000100",'0',c,PCtemp);
 
@@ -148,9 +163,9 @@ INTRUSTION: instructionmemory port map(PC,IR);
 
 CONTROL: controlunit port map(IR(31 downto 26), RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, Jump, ALUOp(1), ALUOp(0));
 
-WRITEreg: mux21_8bit port map(IR(20 downto 16), IR(15 downto 11), RegDst, writeregout);
+WRITEreg: mux21_5bit port map(IR(20 downto 16), IR(15 downto 11), RegDst, writeregout);
 
-REGISTERS: registerfile port map(gclock,greset,IR(25 downto 21),IR(20 downto 16), writeregout,writedata,'0',readdata1,readdata2);
+REGISTERS: registerfile port map(gclock, greset, IR(25 downto 21),IR(20 downto 16), writeregout, writedata,'0',readdata1, readdata2);
 
 SELECTread2: mux21_8bit port map(readdata2, IR(7 downto 0),ALUSrc,selectB);
 
@@ -168,7 +183,7 @@ ADDNEXTPC: fullAdder8Bit port map(PCtemp, IR(7 downto 0), c, open, branchresult)
 
 BRANCHSELECT: mux21_8bit port map(PCtemp, branchresult,ZEROsignal AND Branch,selectPC);
 
-JUMPSELECT: mux21_8bit port map(branchresult, IR(7 downto 0), Jump, PC);
+JUMPSELECT: mux21_8bit port map(branchresult, IR(7 downto 0), Jump, newPC);
 
 flags <= '0' & REgDst & Jump & MemRead & MemtoReg & AluOp & alusrc;
 

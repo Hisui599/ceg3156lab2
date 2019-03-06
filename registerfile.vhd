@@ -42,7 +42,7 @@ ARCHITECTURE rtl OF registerfile IS
 	end component;
 
 	BEGIN
-	decode: decoder3to8 port map(writeRegister, decodeout);
+	decode: decoder3to8 port map(writeRegister(2 downto 0), decodeout);
 
 	r0: eightbitregister port map(resetBar, regwrite and decodeout(7), clk, writeData, out0);
 	r1: eightbitregister port map(resetBar, regwrite and decodeout(6), clk, writeData, out1);
