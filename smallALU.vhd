@@ -5,30 +5,34 @@ entity smallAlu is
 port (
 		selec :in std_logic_vector(2 downto 0);
 		ValA, ValB: in std_logic_vector(7 downto 0);
-		ValO : out std_logic_vector(7 downto 0)
-
-	);
+		ValO : out std_logic_vector(7 downto 0);
+		zero : out std_logic);
 end smallAlu;
 
 architecture rtl of smallAlu is
 --AND OR SUB ADD SLT
 
 --ADDER Component
-component eightBitAdder is
-	port (
-		i_Ai, i_Bi		: IN	STD_LOGIC_VECTOR(7 downto 0);
-		o_Sum			: OUT	STD_LOGIC_VECTOR(7 downto 0);
-		carry6, carry7 : OUT STD_LOGIC
+component fullAdder8Bit is
+	port(
+		M : in std_logic_vector (7 downto 0);
+		N : in std_logic_vector (7 downto 0);
+		Cin : in std_logic;
+		Cout : out std_logic;
+		Sum : out std_logic_vector (7 downto 0)
 	);
-end component eightBitAdder;
+end component;
 
 --Subtractor
-component eightBitSubtractor is
-	port (
-		i_Ai, i_Bi		: IN	STD_LOGIC_VECTOR(7 downto 0);
-		o_Sum			: OUT	STD_LOGIC_VECTOR(7 downto 0)
+component fullSubtractor8Bit is
+	port(
+		M : in std_logic_vector (7 downto 0);
+		N : in std_logic_vector (7 downto 0);
+		Din : in std_logic;
+		Cout : out std_logic;
+		Sum : out std_logic_vector (7 downto 0)
 	);
-end component eightBitSubtractor;
+end component;
 
 --AND
 component eightBitAND is
@@ -68,10 +72,11 @@ inSigA <= ValA ; inSigB <= ValB;
 
  sAND: eightBitAND port map(inSigA,inSigB,inMuxA);
  sOR: eightBitOR port map(inSigA,inSigB,inMuxB);
- sADD: eightBitAdder port map(inSigA,inSigB,inMuxC);
- sSUB: eightBitSubtractor port map(inSigA,inSigB,inMuxD);
+ sADD: fullAdder8Bit port map(inSigA,inSigB, '0', open, inMuxC);
+ sSUB: fullSubtractor8Bit port map(inSigA, inSigB, '0', open, inMuxD);
  sSLT: eightBitSLT port map(inSigA,inSigB,inMuxF);
  mux: mux8x3 port map(inMuxA,inMuxB,inMuXC,inMuxD,inMuxE,"00000000","00000000","00000000",selectors,outMuxA);
- ValO <= outMuxA; 
-		
+ ValO <= outMuxA;
+ zero <= not(outMuxA(0) or outMuxA(1) or outMuxA(2) or outMuxA(3) or outMuxA(4) or outMuxA(5) or outMuxA(6) or outMuxA(7));
+ 
 end architecture rtl;

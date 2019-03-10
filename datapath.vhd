@@ -23,12 +23,12 @@ ARCHITECTURE RTL OF Datapath IS
 	Signal ZEROsignal: std_logic;
 	signal writeregout : std_logic_vector(4 downto 0);
 	Signal ALUOPERATION : std_logic_vector(2 DOWNTO 0);
-	signal MEMTOREGresult : std_logic_vector(7 DOWNTO 0);
 	signal DMEMresult: std_logic_vector(7 DOWNTO 0);
 	Signal ALUOp: std_logic_vector(1 DOWNTO 0);
 	Signal ALUresult: std_logic_vector(7 DOWNTO 0);
-	Signal RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, Jump, c : STD_LOGIC;
+	Signal RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, Jump : STD_LOGIC;
 	Signal flags : std_logic_vector(7 downto 0);
+	signal s0 : std_logic;
 	
 --component LPM_ROM
 --	PORT
@@ -112,14 +112,13 @@ PORT (
 	Operation:OUT STD_LOGIC_VECTOR(2 DOWNTO 0));
 end component;
 
-entity smallAlu is 
+component smallAlu is 
 port (
 		selec :in std_logic_vector(2 downto 0);
 		ValA, ValB: in std_logic_vector(7 downto 0);
-		ValO : out std_logic_vector(7 downto 0)
-
-	);
-end smallAlu;
+		ValO : out std_logic_vector(7 downto 0);
+		zero : out std_logic);
+end component;
 
 component shiftLeft8bit
 PORT ( 	
@@ -156,9 +155,9 @@ BEGIN
 
 ProgramCounter: eightbitregister port map (greset, '1', gclock, newPC, PC);
 
-PCplus4: fullAdder8Bit port map(PC,"00000100",'0',c,PCtemp);
+PCplus4: fullAdder8Bit port map(PC, "00000100",'0', open, PCtemp);
 
-INTRUSTION: instructionmemory port map(PC,IR);
+INSTRUCTION: instructionmemory port map(PC,IR);
 
 CONTROL: controlunit port map(IR(31 downto 26), RegDst, ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, Jump, ALUOp(1), ALUOp(0));
 
@@ -168,15 +167,9 @@ REGISTERS: registerfile port map(gclock, greset, IR(25 downto 21),IR(20 downto 1
 
 SELECTread2: mux21_8bit port map(readdata2, IR(7 downto 0),ALUSrc,selectB);
 
-ALUCON: ALUcontrol port map(IR(5 downto 0),ALUOp,ALUOPERATION);
+ALUCON: ALUcontrol port map(IR(5 downto 0), ALUOp, ALUOPERATION);
 
-ALU: RegWrite port map(readdata1, selectB, ALUOPERATION, ALUresult, ZEROsignal);
-
-
-selec :in std_logic_vector(2 downto 0);
-		ValA, ValB: in std_logic_vector(7 downto 0);
-		ValO : out std_logic_vector(7 downto 0)
-
+ALU: smallAlu port map(ALUOPERATION, readdata1, selectB, ALUresult, ZEROsignal);
 
 DATAMEM: ram port map(ALUresult, gclock, readdata2, MemWrite, DMEMresult); -- MemRead
 
@@ -186,13 +179,15 @@ SelECTwrite: mux21_8bit port map (ALUresult, DMEMresult, MEMtoReg, writedata);
 
 ADDNEXTPC: fullAdder8Bit port map(PCtemp, IR(7 downto 0), c, open, branchresult);
 
-BRANCHSELECT: mux21_8bit port map(PCtemp, branchresult,ZEROsignal AND Branch,selectPC);
+s0 <= ZEROsignal AND Branch;
+
+BRANCHSELECT: mux21_8bit port map(PCtemp, branchresult, s0, selectPC);
 
 JUMPSELECT: mux21_8bit port map(branchresult, IR(7 downto 0), Jump, newPC);
 
 flags <= '0' & REgDst & Jump & MemRead & MemtoReg & AluOp & alusrc;
 
-muxww: mux3x8 port map(PCtemp, ALUresult, readdata1, readdata2, writedata, flags, valueselect, muxout);
+muxww: mux3x8 port map(PC, ALUresult, readdata1, readdata2, writedata, flags, valueselect, muxout);
 
 instructionout <= IR;
 branchout <= Branch;
